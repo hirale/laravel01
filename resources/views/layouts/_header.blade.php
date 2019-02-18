@@ -20,7 +20,7 @@
                             <a class="nav-link" href="{{ route('help') }}">Help</a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('signup') }}" class="nav-link">Sign up</a>
+                            <a href="{{ route('users.create') }}" class="nav-link">Sign up</a>
                         </li>
                     </ul>
                 </div>

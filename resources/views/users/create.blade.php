@@ -3,7 +3,7 @@
 
 @section('content')
     <div class="my-5 mx-auto" style="width: 500px;">
-        <form method="post">
+        <form method="post" action=" {{ action('UsersController@store') }}">
             @csrf
             <div class="form-group row">
                 <label for="email" class="col-sm-2 col-form-label">Email</label>

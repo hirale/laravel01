@@ -9,6 +9,6 @@
             featured content or information.</p>
         <hr class="my-4">
         <p>It uses utility classes for typography and spacing to space content out within the larger container.</p>
-        <a class="btn btn-primary btn-lg" href="{{ route('signup') }}" role="button">Sign Up Now</a>
+        <a class="btn btn-primary btn-lg" href="{{ route('users.create') }}" role="button">Sign Up Now</a>
     </div>
 @endsection
