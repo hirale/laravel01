@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Class UsersController
@@ -12,13 +13,27 @@ use Illuminate\Http\Request;
 class UsersController extends Controller
 {
     /**
+     * UsersController constructor.
+     */
+    public function __construct()
+    {
+        $this->middleware('auth', [
+            'except' => ['show', 'create', 'store', 'index', 'confirmEmail']
+        ]);
+        $this->middleware('guest', [
+            'only' => ['create']
+        ]);
+    }
+
+    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
     public function index()
     {
-        //
+        $users = User::paginate(10);
+        return view('users.index', compact('users'));
     }
 
     /**
@@ -31,15 +46,28 @@ class UsersController extends Controller
         return view('users.create');
     }
 
+
     /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request)
     {
-        //
+        $this->validate($request, [
+            'name' => 'required|min:6|max:50',
+            'email' => 'required|email|unique:users|max:255',
+            'password' => 'required|confirmed|min:6'
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+        ]);
+        $this->sendEmailConfirmationTo($user);
+        session()->flash('success', 'Welcome to laravel! Please check your mailbox for confirmation email.');
+        return redirect()->route('users.show', [$user->id]);
     }
 
 
@@ -52,37 +80,88 @@ class UsersController extends Controller
         return view('users.show', compact('user'));
     }
 
+
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int $id
-     * @return \Illuminate\Http\Response
+     * @param User $user
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @throws \Illuminate\Auth\Access\AuthorizationException
      */
-    public function edit($id)
+    public function edit(User $user)
     {
-        //
+        $this->authorize('update', $user);
+        return view('users.edit', compact('user'));
+    }
+
+
+    /**
+     * @param Request $request
+     * @param User $user
+     * @return \Illuminate\Http\RedirectResponse
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function update(Request $request, User $user)
+    {
+        $this->authorize('update', $user);
+        $this->validate($request, [
+            'name' => 'required|min:6|max:50',
+            'password' => 'nullable|confirmed|min:6'
+        ]);
+        $data = [];
+        $data['name'] = $request->name;
+        if ($request->password) {
+            $data['password'] = $request->password;
+        }
+        $user->update($data);
+        session()->flash('success', 'User profile updated!');
+        return redirect()->route('users.show', $user->id);
+    }
+
+
+    /**
+     * @param User $user
+     * @return \Illuminate\Http\RedirectResponse
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     */
+    public function destroy(User $user)
+    {
+        $this->authorize('destory', $user);
+        $user->delete();
+        session()->flash('success', $user->name . ' is deleted successfully!');
+        return back();
     }
 
     /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request $request
-     * @param  int $id
-     * @return \Illuminate\Http\Response
+     * @param $user
      */
-    public function update(Request $request, $id)
+    public function sendEmailConfirmationTo($user)
     {
-        //
+        $view = 'emails.confirm';
+        $data = compact('user');
+        $from = 'no-reply@example.com';
+        $name = 'Laravel';
+        $to = $user->email;
+        $subject = 'Thank you for registration on laravel, please confirm your registration';
+
+        Mail::send($view, $data, function ($message) use ($from, $name, $to, $subject) {
+            $message->from($from, $name)->to($to)->subject($subject);
+        });
     }
 
     /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int $id
-     * @return \Illuminate\Http\Response
+     * @param $token
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy($id)
+    public function confirmEmail($token)
     {
-        //
+        $user = User::where('activation_token', $token)->firstOrFail();
+
+        $user->activated = true;
+        $user->activation_token = null;
+        $user->save();
+
+        \Auth::login($user);
+        session()->flash('success', 'Your account is activated!');
+        return redirect()->route('users.show', [$user]);
     }
 }

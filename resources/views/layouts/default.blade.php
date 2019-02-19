@@ -10,15 +10,17 @@
 </head>
 <body>
 <div class="container-fluid">
-@include('layouts._header')
+    @include('layouts._header')
     <div class="row">
         <div class="container">
             <div class="col">
+                @include('shared._messages')
                 @yield('content','Twitter Content')
             </div>
         </div>
     </div>
 </div>
 @include('layouts._footer')
+<script src="{{ mix('js/app.js') }}"></script>
 </body>
 </html>
